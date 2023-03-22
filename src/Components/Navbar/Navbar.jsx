@@ -1,8 +1,18 @@
-import React from 'react';
+import React, {useContext} from 'react';
 import './Navbar.css'
 import {Link} from "react-router-dom";
+import {AuthContext} from "../../Contexts/AuthProvider";
 
 const Navbar = () => {
+    const {user, logOut, setUser} = useContext(AuthContext);
+
+    const handleLogOut = () => {
+        logOut()
+            .then(() => {
+            })
+            .catch(error => console.error(error))
+    }
+
     return (
         <div className="mx-auto md:w-3/4 mt-2 rounded-xl bg-blue-500">
             <div className="navbar glass rounded-xl shadow-xl">
@@ -45,7 +55,7 @@ const Navbar = () => {
                     </ul>
                 </div>
                 <div className="navbar-end">
-                    <Link to="#" className="btn">Get started</Link>
+                    <Link onClick={handleLogOut} to="#" className="btn btn-error text-white">Logout</Link>
                 </div>
             </div>
         </div>

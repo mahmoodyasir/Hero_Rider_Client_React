@@ -1,17 +1,137 @@
-import React, {useState} from 'react';
+import React, {useContext, useState} from 'react';
 import {useForm} from "react-hook-form";
 import toast from "react-hot-toast";
+import {useNavigate} from "react-router-dom";
+import Axios from "axios";
+import {AuthContext} from "../../Contexts/AuthProvider";
+import {domain} from "../../rootdomain";
 
 const Register = () => {
     const {register, formState: {errors}, handleSubmit} = useForm();
+    const {createUser, updateUserProfile} = useContext(AuthContext);
     const [ageState, setAgeState] = useState(null);
     const [ageMessage, setAgeMessage] = useState('');
+    const [registerError, setRegisterError] = useState('');
     const [vehicleType, setVehicleType] = useState(null);
     const [rider, setRider] = useState(null);
     const [learner, setLearner] = useState(null);
+    const navigate = useNavigate();
+    let imageUrl1 = ''
+    let imageUrl2 = ''
+    let imageUrl3 = ''
+
+    const imageApiKey = process.env.REACT_APP_imgbb_api_key;
 
     const handleRegister = (data) => {
+        setRegisterError('')
+        const isAdmin = false;
+        const blocked = false;
+
+        if (data.age < 0)
+        {
+            setAgeState(1);
+            setAgeMessage("Please Provide Valid Age !!");
+            return;
+        }
+        setAgeState(null);
+        if(data.password !== data.confirm_password){
+            toast.error("Password Not Matched")
+            return;
+        }
+        else{
+            if(data.role === 'rider')
+            {
+                const profile_image = data?.profile_image[0];
+                const nid_image = data?.nid_image[0];
+                const driving_image = data?.driving_image[0];
+                const formData1 = new FormData()
+                const formData2 = new FormData()
+                const formData3 = new FormData()
+                formData1.append('image', profile_image)
+                formData2.append('image', nid_image)
+                formData3.append('image', driving_image)
+                Axios({
+                    method: "post",
+                    url: `https://api.imgbb.com/1/upload?key=${imageApiKey}`,
+                    data: formData1
+                }).then(response => {
+                    if(response.data.success)
+                    {
+                        imageUrl1=response?.data?.data?.display_url;
+                        Axios({
+                            method: "post",
+                            url: `https://api.imgbb.com/1/upload?key=${imageApiKey}`,
+                            data: formData2
+                        }).then(response => {
+                            if(response.data.success)
+                            {
+                                imageUrl2=response?.data?.data?.display_url;
+                                Axios({
+                                    method: "post",
+                                    url: `https://api.imgbb.com/1/upload?key=${imageApiKey}`,
+                                    data: formData3
+                                }).then(response => {
+                                    imageUrl3=response?.data?.data?.display_url;
+                                    userRegister(data, data?.email, data?.password, data?.name, isAdmin, blocked, imageUrl1, imageUrl2, imageUrl3)
+                                })
+
+                            }
+                        })
+
+                    }
+                })
+
+            }
+            else if(data.role === 'learner')
+            {
+
+            }
+        }
+
+    }
+
+    const userRegister = (data, email, password, name, isAdmin, blocked, imageUrl1, imageUrl2, imageUrl3) => {
+        createUser(email, password)
+            .then(result => {
+                const user = result.user;
+                console.log(user);
+                toast.success('User Created Successfully');
+                const userInfo = {
+                    displayName: name,
+                    photoUrl: imageUrl1
+                }
+                updateUserProfile(userInfo)
+                    .then(() => {
+                        if(data.role === 'rider')
+                        {
+                            userRegisterRider(data?.email, data?.password, data?.name, data?.phone, data?.address, data?.age, data?.area, data?.role, data?.vehicle_name, data?.vehicle_type, data?.vehicle_name_plate, isAdmin, blocked, imageUrl1, imageUrl2, imageUrl3)
+                        }
+                        else if(data.role === 'learner')
+                        {
+
+                        }
+                    }).catch(err => console.log(err))
+                navigate('/')
+            }).catch(error => {
+            console.log(error)
+            setRegisterError(error.message)
+        })
+    }
+
+    const userRegisterLearner = (data) => {
         console.log(data)
+    }
+
+    const userRegisterRider = (email, password, name, phone, address, age, area, role, vehicle_name, vehicle_type, vehicle_name_plate, isAdmin, blocked, imageUrl1, imageUrl2, imageUrl3) => {
+        const user = { email, password, name, phone, address, age, area, role, vehicle_name, vehicle_type, vehicle_name_plate, isAdmin, blocked, imageUrl1, imageUrl2, imageUrl3 }
+        Axios({
+            method: "post",
+            url: `${domain}/users`,
+            data: user
+        }).then(response => {
+            console.log("MongoDB Response", response.data)
+
+        })
     }
 
     const optionReveal = (data) => {
@@ -272,9 +392,16 @@ const Register = () => {
 
                        {
                            (rider !== null || learner !== null) &&
-                           <div className="md:flex md:justify-center">
-                               <input className='btn btn-outline btn-accent md:w-2/4 mt-8' value="Register" type="submit"/>
-                           </div>
+                           <>
+                               <div className="md:flex md:justify-center">
+                                   <input className='btn btn-outline btn-accent md:w-2/4 mt-8' value="Register" type="submit"/>
+                               </div>
+
+                               <div className="mt-4">
+                                   {registerError && <p className='text-red-600'>{registerError}</p>}
+                               </div>
+                           </>
+
                        }
 
                    </form>
